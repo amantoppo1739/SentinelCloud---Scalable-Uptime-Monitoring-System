@@ -121,6 +121,11 @@ jobs:
         run: |
           echo "$EC2_SSH_KEY" > /tmp/ec2_key.pem
           chmod 600 /tmp/ec2_key.pem
+          
+          # Copy updated docker-compose.yml to EC2
+          scp -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem docker-compose.yml $EC2_USER@$EC2_HOST:/opt/sentinelcloud/docker-compose.yml
+          
+          # Deploy containers
           ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem $EC2_USER@$EC2_HOST << 'EOF'
             cd /opt/sentinelcloud
             docker-compose down --remove-orphans || true
