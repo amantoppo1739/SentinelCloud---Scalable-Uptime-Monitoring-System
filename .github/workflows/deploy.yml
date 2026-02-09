@@ -123,6 +123,7 @@ jobs:
           chmod 600 /tmp/ec2_key.pem
           ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem $EC2_USER@$EC2_HOST << 'EOF'
             cd /opt/sentinelcloud
+            docker-compose down --remove-orphans || true
             docker-compose pull
             docker-compose up -d
           EOF

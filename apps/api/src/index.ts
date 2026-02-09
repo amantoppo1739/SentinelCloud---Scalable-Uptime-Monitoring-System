@@ -18,6 +18,9 @@ import env from './config/env.js';
 
 const app = express();
 
+// Trust proxy to get real client IP through Nginx
+app.set('trust proxy', true);
+
 // Security headers with helmet
 app.use(helmet({
   contentSecurityPolicy: {
