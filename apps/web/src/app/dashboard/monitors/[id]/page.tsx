@@ -107,7 +107,7 @@ export default function MonitorDetailPage() {
       const response = await api.get(`/api/metrics/${monitorId}`, {
         params: { limit: '200', startDate: startDate.toISOString(), endDate: endDate.toISOString() },
       })
-      setLogs(response.data.logs.reverse())
+      setLogs(response.data.logs)
     } catch (err: any) {
       console.error('Failed to fetch logs:', err)
     }
