@@ -10,6 +10,8 @@ env:
   AWS_REGION: ap-south-1
   ECR_REPOSITORY_API: sentinelcloud-api
   ECR_REPOSITORY_WEB: sentinelcloud-web
+  # Public base URL for the deployed app/API, used at build time
+  NEXT_PUBLIC_API_URL: http://65.2.31.27
 
 jobs:
   test:
@@ -90,7 +92,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           cd apps/web
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
+          docker build --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
