@@ -47,10 +47,24 @@ api.interceptors.response.use(
         const { accessToken } = response.data
         localStorage.setItem('accessToken', accessToken)
 
+        // Fetch new CSRF token after token refresh
+        try {
+          const csrfUrl = API_URL ? `${API_URL}/api/auth/csrf-token` : '/api/auth/csrf-token'
+          const csrfResponse = await axios.get(csrfUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+          if (csrfResponse.data?.csrfToken) {
+            localStorage.setItem('csrfToken', csrfResponse.data.csrfToken)
+          }
+        } catch (csrfError) {
+          console.error('Failed to refresh CSRF token:', csrfError)
+        }
+
         originalRequest.headers.Authorization = `Bearer ${accessToken}`
         return api(originalRequest)
       } catch (refreshError) {
         localStorage.removeItem('accessToken')
+        localStorage.removeItem('csrfToken')
         window.location.href = '/login'
         return Promise.reject(refreshError)
       }

@@ -41,6 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const response = await api.post('/api/auth/login', { email, password })
     localStorage.setItem('accessToken', response.data.accessToken)
+    
+    // Fetch new CSRF token after login (tied to the new access token)
+    try {
+      const csrfResponse = await api.get('/api/auth/csrf-token')
+      if (csrfResponse.data?.csrfToken) {
+        localStorage.setItem('csrfToken', csrfResponse.data.csrfToken)
+      }
+    } catch (e) {
+      console.error('Failed to fetch CSRF token:', e)
+    }
+    
     setIsAuthenticated(true)
     router.push('/dashboard')
   }

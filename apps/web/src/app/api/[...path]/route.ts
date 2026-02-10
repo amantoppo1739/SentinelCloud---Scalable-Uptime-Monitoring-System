@@ -72,10 +72,19 @@ async function proxyRequest(
       responseHeaders.set('Content-Type', contentType);
     }
 
-    // Forward set-cookie headers
-    const setCookie = response.headers.get('set-cookie');
-    if (setCookie) {
-      responseHeaders.set('Set-Cookie', setCookie);
+    // Forward ALL set-cookie headers (there can be multiple)
+    // Note: response.headers.getSetCookie() returns an array of all Set-Cookie values
+    const setCookies = response.headers.getSetCookie?.() || [];
+    if (setCookies.length > 0) {
+      setCookies.forEach(cookie => {
+        responseHeaders.append('Set-Cookie', cookie);
+      });
+    } else {
+      // Fallback for older fetch implementations
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) {
+        responseHeaders.set('Set-Cookie', setCookie);
+      }
     }
 
     // Forward CSRF token

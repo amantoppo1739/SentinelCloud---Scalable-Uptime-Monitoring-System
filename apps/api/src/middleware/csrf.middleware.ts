@@ -17,8 +17,29 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// Get session identifier from access token or fallback to IP
+function getSessionId(req: Request): string {
+  // Try to extract user ID from JWT access token
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      // Decode JWT without verification (just to get the user ID)
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      if (payload.userId) {
+        return `user_${payload.userId}`;
+      }
+    } catch (e) {
+      // Invalid JWT, fall through
+    }
+  }
+  
+  // Fallback to IP address
+  return req.ip || 'default';
+}
+
 export function generateCsrfToken(req: Request): string {
-  const sessionId = req.cookies?.sessionId || req.ip || 'default';
+  const sessionId = getSessionId(req);
   const token = crypto.randomBytes(32).toString('hex');
   
   csrfTokens.set(sessionId, {
@@ -30,7 +51,7 @@ export function generateCsrfToken(req: Request): string {
 }
 
 export function getCsrfToken(req: Request): string | null {
-  const sessionId = req.cookies?.sessionId || req.ip || 'default';
+  const sessionId = getSessionId(req);
   const stored = csrfTokens.get(sessionId);
   
   if (!stored || stored.expiresAt < Date.now()) {
@@ -47,7 +68,7 @@ export function validateCsrfToken(req: Request): boolean {
     return true;
   }
 
-  const sessionId = req.cookies?.sessionId || req.ip || 'default';
+  const sessionId = getSessionId(req);
   const stored = csrfTokens.get(sessionId);
   
   if (!stored || stored.expiresAt < Date.now()) {
