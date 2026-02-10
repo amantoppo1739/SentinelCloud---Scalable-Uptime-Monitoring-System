@@ -103,27 +103,17 @@ export function requireCsrf(req: Request, res: Response, next: NextFunction) {
     return next();
   }
 
-  // Skip CSRF for API key authentication
+  // Skip CSRF for ANY Bearer token authentication (JWT or API key)
+  // JWT and API keys in Authorization header are inherently CSRF-resistant
   const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer sc_live_')) {
+  if (authHeader?.startsWith('Bearer ')) {
+    console.log('[CSRF] Skipping CSRF for Bearer token authentication');
     return next();
   }
 
-  // Skip CSRF for authenticated JWT users (JWT already provides CSRF protection)
-  // Only require CSRF for unauthenticated requests (register, login, etc.)
-  if (authHeader?.startsWith('Bearer ') && !authHeader.startsWith('Bearer sc_live_')) {
-    try {
-      jwt.verify(authHeader.substring(7), env.JWT_SECRET);
-      console.log('[CSRF] Skipping CSRF check for authenticated JWT user');
-      return next(); // Valid JWT = skip CSRF
-    } catch (e) {
-      // Invalid JWT, continue to CSRF validation
-      console.log('[CSRF] Invalid JWT, checking CSRF token');
-    }
-  }
-
+  // Only validate CSRF for unauthenticated requests (register, login, forgot password, etc.)
   if (!validateCsrfToken(req)) {
-    console.log('[CSRF] CSRF validation failed');
+    console.log('[CSRF] CSRF validation failed for unauthenticated request');
     return res.status(403).json({ error: 'Invalid or missing CSRF token' });
   }
 
