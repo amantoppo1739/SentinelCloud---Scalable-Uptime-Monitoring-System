@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+import env from '../config/env.js';
 
 // CSRF token secret from environment or generate one
 const CSRF_SECRET = process.env.CSRF_SECRET || crypto.randomBytes(32).toString('hex');
@@ -17,29 +19,38 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Get session identifier from access token or fallback to IP
+// Get session identifier - use JWT user ID if authenticated, otherwise generate per-request token
 function getSessionId(req: Request): string {
   // Try to extract user ID from JWT access token
   const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ') && !authHeader.startsWith('Bearer sc_live_')) {
     const token = authHeader.substring(7);
     try {
-      // Decode JWT without verification (just to get the user ID)
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      // Verify and decode JWT
+      const payload = jwt.verify(token, env.JWT_SECRET) as { userId: string };
       if (payload.userId) {
         return `user_${payload.userId}`;
       }
     } catch (e) {
-      // Invalid JWT, fall through
+      // Invalid or expired JWT, fall through
+      console.log('[CSRF] Invalid JWT, falling back to IP-based session');
     }
   }
   
-  // Fallback to IP address
+  // Fallback to IP address for non-authenticated requests
   return req.ip || 'default';
 }
 
 export function generateCsrfToken(req: Request): string {
   const sessionId = getSessionId(req);
+  
+  // Check if a valid token already exists for this session
+  const existing = csrfTokens.get(sessionId);
+  if (existing && existing.expiresAt > Date.now()) {
+    return existing.token;
+  }
+  
+  // Generate new token
   const token = crypto.randomBytes(32).toString('hex');
   
   csrfTokens.set(sessionId, {
@@ -47,6 +58,7 @@ export function generateCsrfToken(req: Request): string {
     expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
   });
 
+  console.log(`[CSRF] Generated token for session: ${sessionId}`);
   return token;
 }
 
@@ -71,12 +83,18 @@ export function validateCsrfToken(req: Request): boolean {
   const sessionId = getSessionId(req);
   const stored = csrfTokens.get(sessionId);
   
+  console.log(`[CSRF] Validating for session: ${sessionId}, stored: ${!!stored}`);
+  
   if (!stored || stored.expiresAt < Date.now()) {
+    console.log('[CSRF] No stored token or expired');
     return false;
   }
 
   const token = req.headers['x-csrf-token'] || req.body?.csrfToken;
-  return token === stored.token;
+  const isValid = token === stored.token;
+  
+  console.log(`[CSRF] Token valid: ${isValid}`);
+  return isValid;
 }
 
 export function requireCsrf(req: Request, res: Response, next: NextFunction) {
@@ -91,9 +109,24 @@ export function requireCsrf(req: Request, res: Response, next: NextFunction) {
     return next();
   }
 
+  // Skip CSRF for authenticated JWT users (JWT already provides CSRF protection)
+  // Only require CSRF for unauthenticated requests (register, login, etc.)
+  if (authHeader?.startsWith('Bearer ') && !authHeader.startsWith('Bearer sc_live_')) {
+    try {
+      jwt.verify(authHeader.substring(7), env.JWT_SECRET);
+      console.log('[CSRF] Skipping CSRF check for authenticated JWT user');
+      return next(); // Valid JWT = skip CSRF
+    } catch (e) {
+      // Invalid JWT, continue to CSRF validation
+      console.log('[CSRF] Invalid JWT, checking CSRF token');
+    }
+  }
+
   if (!validateCsrfToken(req)) {
+    console.log('[CSRF] CSRF validation failed');
     return res.status(403).json({ error: 'Invalid or missing CSRF token' });
   }
 
+  console.log('[CSRF] CSRF validation passed');
   next();
 }
