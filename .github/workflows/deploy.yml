@@ -65,41 +65,42 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  build-and-push-web:
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push Web image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          cd apps/web
-          docker build --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG" >> $GITHUB_OUTPUT
+  # Web build removed - deployed to Vercel (https://sentinelcloud.vercel.app)
+  # build-and-push-web:
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #
+  #     - name: Login to Amazon ECR
+  #       id: login-ecr
+  #       uses: aws-actions/amazon-ecr-login@v2
+  #
+  #     - name: Build, tag, and push Web image to Amazon ECR
+  #       env:
+  #         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  #         IMAGE_TAG: ${{ github.sha }}
+  #       run: |
+  #         cd apps/web
+  #         docker build --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL -t $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG .
+  #         docker tag $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
+  #         docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG
+  #         docker push $ECR_REGISTRY/$ECR_REPOSITORY_WEB:latest
+  #         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY_WEB:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
   deploy:
-    needs: [build-and-push-api, build-and-push-web]
+    needs: [build-and-push-api]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -124,6 +125,9 @@ jobs:
           
           # Copy updated docker-compose.yml to EC2
           scp -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem docker-compose.yml $EC2_USER@$EC2_HOST:/opt/sentinelcloud/docker-compose.yml
+          
+          # Copy updated Nginx config to EC2
+          scp -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem infra/nginx/conf.d/default.conf $EC2_USER@$EC2_HOST:/opt/sentinelcloud/infra/nginx/conf.d/default.conf
           
           # Deploy containers
           ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem $EC2_USER@$EC2_HOST << 'EOF'

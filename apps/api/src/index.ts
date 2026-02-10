@@ -15,6 +15,8 @@ import apiKeysRoutes from './routes/apiKeys.routes.js';
 import { apiRateLimiter } from './middleware/rateLimit.middleware.js';
 import { sanitizeBody } from './middleware/sanitize.middleware.js';
 import env from './config/env.js';
+// Import worker to run in same process
+import './workers/ping.worker.js';
 
 const app = express();
 
@@ -45,7 +47,11 @@ app.use(helmet({
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000'
+    ? [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'https://sentinelcloud.vercel.app', // Vercel deployment
+        'http://65.2.31.27', // EC2 IP (if web still runs there)
+      ]
     : 'http://localhost:3000',
   credentials: true,
 }));
@@ -95,9 +101,13 @@ async function start() {
     // Setup ping schedule
     await setupPingSchedule();
 
+    // Worker is now running in the same process
+    console.log('✅ Background worker started in same process');
+
     // Start server
     app.listen(env.API_PORT, () => {
       console.log(`🚀 API server running on port ${env.API_PORT}`);
+      console.log('💼 Worker and API combined - optimized for t2.micro');
     });
   } catch (error) {
     console.error('Failed to start server:', error);

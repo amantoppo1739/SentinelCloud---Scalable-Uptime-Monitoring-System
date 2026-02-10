@@ -1,34 +1,8 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:7
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: sentinelcloud
-      MONGO_INITDB_ROOT_PASSWORD: sentinelcloud
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # MongoDB and Redis removed - using Atlas and Redis Cloud
+  # Worker removed - combined with API process
 
   api:
     image: 348117807191.dkr.ecr.ap-south-1.amazonaws.com/sentinelcloud-api:latest
@@ -39,7 +13,7 @@ services:
       - API_PORT=4000
       - POSTGRES_URL=${POSTGRES_URL}
       - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=${REDIS_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_ACCESS_EXPIRES_IN=${JWT_ACCESS_EXPIRES_IN}
       - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}
@@ -51,41 +25,9 @@ services:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
       - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-    depends_on:
-      redis:
-        condition: service_healthy
     restart: unless-stopped
 
-  worker:
-    image: 348117807191.dkr.ecr.ap-south-1.amazonaws.com/sentinelcloud-api:latest
-    command: node dist/worker.js
-    environment:
-      - NODE_ENV=production
-      - POSTGRES_URL=${POSTGRES_URL}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - SES_FROM_EMAIL=${SES_FROM_EMAIL}
-    depends_on:
-      redis:
-        condition: service_healthy
-      api:
-        condition: service_started
-    restart: unless-stopped
-
-  web:
-    image: 348117807191.dkr.ecr.ap-south-1.amazonaws.com/sentinelcloud-web:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000}
-    depends_on:
-      - api
-    restart: unless-stopped
+  # Web service removed - deployed to Vercel (https://sentinelcloud.vercel.app)
 
   nginx:
     image: nginx:alpine
@@ -98,9 +40,6 @@ services:
       - ./infra/nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - api
-      - web
     restart: unless-stopped
 
-volumes:
-  mongo_data:
-  redis_data:
+# Volumes removed - using managed services
