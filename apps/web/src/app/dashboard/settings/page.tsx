@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { useAvatar } from '@/lib/avatar-context'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -27,6 +28,7 @@ interface User {
 
 export default function SettingsPage() {
   const { logout } = useAuth()
+  const { refreshAvatar } = useAvatar()
   const [user, setUser] = useState<User | null>(null)
   // Get the actual API base URL for documentation
   const apiBaseUrl = typeof window !== 'undefined' 
@@ -183,6 +185,7 @@ export default function SettingsPage() {
         },
       })
       await fetchUser()
+      refreshAvatar() // Refresh avatar in navbar
       toast.success('Avatar updated successfully')
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || 'Upload failed'
@@ -203,6 +206,7 @@ export default function SettingsPage() {
       })
       await fetchUser()
       await fetchCsrfToken() // Refresh CSRF token
+      refreshAvatar() // Refresh avatar in navbar
       toast.success('Avatar removed successfully')
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || 'Failed to remove'

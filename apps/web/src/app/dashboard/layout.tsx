@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { api } from '@/lib/api'
 import { DashboardNav } from '@/components/dashboard-nav'
+import { AvatarProvider, useAvatar } from '@/lib/avatar-context'
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, logout } = useAuth()
+  const { avatarVersion } = useAvatar()
   const router = useRouter()
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [userInitial, setUserInitial] = useState<string>('')
@@ -36,7 +38,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         setAvatarUrl(null)
       }
     }).catch(() => {})
-  }, [isAuthenticated])
+  }, [isAuthenticated, avatarVersion]) // Re-fetch when avatarVersion changes
 
   if (loading) {
     return (
@@ -66,5 +68,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <DashboardLayoutContent>{children}</DashboardLayoutContent>
+  return (
+    <AvatarProvider>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </AvatarProvider>
+  )
 }
