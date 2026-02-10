@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+// Use relative URLs in production (proxied through Vercel)
+// Use absolute URL in development (direct to localhost API)
+const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? '' // Empty string = relative URLs (will use Vercel proxy at /api/*)
+  : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -35,9 +39,9 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, {
+        const refreshUrl = API_URL ? `${API_URL}/api/auth/refresh` : '/api/auth/refresh'
+        const response = await axios.post(refreshUrl, {}, {
           withCredentials: true,
-          baseURL: API_URL,
         })
 
         const { accessToken } = response.data
