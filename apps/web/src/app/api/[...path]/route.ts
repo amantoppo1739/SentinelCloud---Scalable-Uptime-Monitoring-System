@@ -101,37 +101,42 @@ async function proxyRequest(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyRequest(request, 'GET', params.path);
+  const { path } = await params;
+  return proxyRequest(request, 'GET', path);
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyRequest(request, 'POST', params.path);
+  const { path } = await params;
+  return proxyRequest(request, 'POST', path);
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyRequest(request, 'PUT', params.path);
+  const { path } = await params;
+  return proxyRequest(request, 'PUT', path);
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyRequest(request, 'DELETE', params.path);
+  const { path } = await params;
+  return proxyRequest(request, 'DELETE', path);
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  return proxyRequest(request, 'PATCH', params.path);
+  const { path } = await params;
+  return proxyRequest(request, 'PATCH', path);
 }
 
 export async function OPTIONS(request: NextRequest) {
