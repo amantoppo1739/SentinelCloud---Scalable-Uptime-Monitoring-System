@@ -2,49 +2,63 @@
 
 A production-ready uptime monitoring system built with modern technologies, featuring real-time alerts, performance metrics, and a beautiful dashboard. Perfect for monitoring websites, APIs, and services with enterprise-grade reliability.
 
+**🌐 Live Demo:** [https://sentinelcloud.vercel.app](https://sentinelcloud.vercel.app)  
+**💰 Cost:** $0/month (100% free tier)  
+**⚡ Performance:** 10% RAM usage on t2.micro, global CDN, <100ms API response
+
 ## 🏗️ Architecture
 
-The system is split into five main parts:
+The system uses a modern, cloud-native architecture optimized for the free tier:
 
-- **Client**: A browser-based dashboard (Next.js) where users manage monitors, view uptime charts, configure alerts, and view status pages/badges.
-- **API & Monitoring Engine**: An Express API that handles auth, monitor CRUD, metrics aggregation, CSV export, API keys, and exposes public/system status endpoints.
-- **Background Workers**: BullMQ workers that run heartbeat checks every 60 seconds, write ping logs to MongoDB, and fire alert/recovery notifications.
-- **Data Layer**: PostgreSQL (Neon or any managed Postgres) for relational data such as users, monitors, refresh tokens, and API keys; MongoDB (Atlas or local Mongo) for high-volume time-series ping logs.
-- **Infrastructure**: Redis for rate limiting and BullMQ queues, Nginx as a reverse proxy, Docker Compose for local orchestration (including MongoDB + Redis containers), and AWS services (EC2, ECR, S3, SES) for production deployment.
+- **Client**: Next.js dashboard deployed on Vercel with global CDN, automatic HTTPS, and API proxy for secure communication with the backend.
+- **API & Monitoring Engine**: Express API on AWS EC2 that handles auth, monitor CRUD, metrics aggregation, CSV export, API keys, and exposes public/system status endpoints. Background workers run in the same process for efficiency.
+- **Background Workers**: BullMQ workers combined with the API process, running heartbeat checks every 60 seconds, writing ping logs to MongoDB, and firing alert/recovery notifications.
+- **Data Layer**: 
+  - **PostgreSQL (Neon)**: User accounts, monitor configurations, refresh tokens, API keys
+  - **MongoDB (Atlas)**: High-volume time-series ping logs with optimized queries
+  - **Redis (Redis Cloud)**: Rate limiting, caching, and BullMQ job queues
+- **Infrastructure**: Nginx reverse proxy on EC2, Docker containers for API, GitHub Actions CI/CD pipeline, AWS services (EC2, ECR, S3, SES). Optimized to run on t2.micro (1GB RAM) with ~10% memory usage.
 
 ```mermaid
 flowchart TB
-  subgraph client [Client]
-    Browser[Browser]
+  subgraph vercel [Vercel - Global CDN]
+    Frontend[Next.js Frontend<br/>HTTPS]
+    Proxy[API Proxy<br/>HTTPS → HTTP]
   end
-  subgraph aws [AWS]
-    EC2[EC2 Nginx]
-    S3[S3 Reports]
-    SES[SES Alerts]
-    ECR[ECR Images]
+  
+  subgraph ec2 [AWS EC2 - t2.micro]
+    Nginx[Nginx<br/>Reverse Proxy]
+    API[Express API<br/>+ BullMQ Worker<br/>Combined Process]
   end
-  subgraph compose [Docker Compose]
-    Nginx[Nginx Reverse Proxy]
-    API[Express API]
-    Next[Next.js App]
-    Redis[Redis]
-    Bull[BullMQ Workers]
+  
+  subgraph managed [Managed Services - Free Tier]
+    PG[(PostgreSQL<br/>Neon)]
+    Mongo[(MongoDB<br/>Atlas M0)]
+    Redis[(Redis<br/>Redis Cloud)]
   end
-  subgraph data [Data Layer]
-    PG[(PostgreSQL Neon)]
-    Mongo[(MongoDB Atlas)]
+  
+  subgraph aws [AWS Services]
+    S3[S3<br/>CSV Reports]
+    SES[SES<br/>Email Alerts]
+    ECR[ECR<br/>Container Registry]
   end
-  Browser --> Nginx
-  Nginx --> API
-  Nginx --> Next
-  API --> Redis
+  
+  Browser[User Browser] -->|HTTPS| Frontend
+  Frontend -->|HTTPS| Proxy
+  Proxy -->|HTTP| Nginx
+  Nginx -->|HTTP| API
+  API -->|Worker in same process| API
   API --> PG
   API --> Mongo
-  Bull --> Redis
-  Bull --> API
-  Bull --> SES
+  API --> Redis
   API --> S3
-  ECR -.-> EC2
+  API --> SES
+  ECR -.->|Pull images| Nginx
+  
+  style vercel fill:#000,stroke:#fff,color:#fff
+  style ec2 fill:#ff9900,stroke:#fff,color:#000
+  style managed fill:#4a90e2,stroke:#fff,color:#fff
+  style aws fill:#ff9900,stroke:#fff,color:#000
 ```
 
 
@@ -80,14 +94,48 @@ flowchart TB
   - Avatar uploads for user profiles (optional, when S3 is configured)
 
 ### Infrastructure & DevOps
-- **Docker Compose**: Complete local development environment
-- **CI/CD Pipeline**: GitHub Actions that run tests, build Docker images, and push to Amazon ECR
-- **AWS Deployment**: 
-  - EC2 with Nginx reverse proxy
-  - S3 for report storage
-  - SES for email alerts
-  - ECR for container registry
-- **Free Tier Optimized**: Designed to run entirely on AWS Free Tier and free services
+- **Cloud-Native Architecture**:
+  - Frontend: Vercel (global CDN, automatic HTTPS, serverless API proxy)
+  - Backend: AWS EC2 t2.micro with Docker (API + Nginx)
+  - Databases: Managed services (Neon PostgreSQL, MongoDB Atlas, Redis Cloud)
+- **Optimized for Free Tier**:
+  - EC2 RAM usage: ~100 MB (10% of 1GB) - can handle 50-100 users
+  - All services on free tier: $0/month
+  - Worker combined with API process for efficiency
+- **CI/CD Pipeline**: 
+  - GitHub Actions for API builds and EC2 deployment
+  - Vercel auto-deploys frontend on every push
+  - Automated testing, Docker image builds, and ECR pushes
+- **Security**: HTTPS via Vercel, API proxy for mixed content prevention, Nginx reverse proxy, CORS protection
+
+## ⚡ Performance & Optimization
+
+This project is optimized to run on minimal resources while maintaining production-grade performance:
+
+### Resource Usage (EC2 t2.micro - 1GB RAM)
+- **RAM Usage**: ~100 MB (10%) - down from 580 MB through optimization
+- **Disk Usage**: ~2.5 GB (37%) - efficient container management
+- **Containers**: 2 (API + Nginx) - worker combined with API process
+- **Capacity**: Can handle 50-100 concurrent users on free tier
+
+### Optimization Techniques
+1. **Managed Databases**: MongoDB Atlas and Redis Cloud (free tiers) instead of self-hosted
+2. **Combined Processes**: Worker runs in same Node.js process as API
+3. **CDN Frontend**: Vercel global CDN for fast page loads worldwide
+4. **HTTPS Proxy**: Vercel serverless functions proxy API calls (HTTPS → HTTP)
+5. **Efficient Builds**: Multi-stage Docker builds, ECR image caching
+
+### Cost Breakdown
+| Service | Tier | Monthly Cost |
+|---------|------|--------------|
+| Frontend (Vercel) | Free | $0 |
+| Backend (EC2 t2.micro) | Free Tier | $0 |
+| PostgreSQL (Neon) | Free | $0 |
+| MongoDB (Atlas M0) | Free | $0 |
+| Redis (Redis Cloud) | Free 30MB | $0 |
+| AWS S3 | Free Tier | $0 |
+| AWS SES | Free Tier | $0 |
+| **Total** | | **$0/month** |
 
 ## 🚀 Quick Start
 
@@ -157,8 +205,6 @@ See `.env.example` for all required variables. For detailed database setup instr
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`: AWS credentials
 - `SES_FROM_EMAIL`: Verified email address for SES
 - `S3_BUCKET_NAME`: S3 bucket for reports
-
-For step-by-step AWS setup (S3, SES, IAM, free tier, and profile images), see [docs/AWS-SETUP.md](./docs/AWS-SETUP.md).
 
 ### Troubleshooting
 
@@ -237,81 +283,94 @@ SentinelCloud/
 
 ## 🔄 CI/CD Pipeline
 
-The GitHub Actions workflow (`.github/workflows/deploy.yml`) performs:
+### Dual Deployment Pipeline
 
+**Frontend (Vercel):**
+- Auto-deploys on every push to `main`
+- Builds Next.js with API proxy
+- Deploys to global CDN with HTTPS
+- Preview deployments for PRs
+
+**Backend (GitHub Actions → EC2):**
 1. **Test**: Runs `npm test` across all workspaces
-2. **Build**: Builds Docker images for `api` and `web`
-3. **Push**: Pushes images to Amazon ECR with tags `latest` and `{git-sha}`
-4. **Deploy**: (Optional) SSHs to EC2 and runs `docker-compose pull && docker-compose up -d`
+2. **Build**: Builds Docker image for `api` (includes combined worker)
+3. **Push**: Pushes to Amazon ECR with tags `latest` and `{git-sha}`
+4. **Deploy**: SSHs to EC2, copies config files, pulls images, restarts containers
 
 **Required GitHub Secrets:**
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
-- `EC2_HOST` (optional, for auto-deploy)
-- `EC2_USER` (optional)
-- `EC2_SSH_KEY` (optional)
+- `EC2_HOST`
+- `EC2_USER`
+- `EC2_SSH_KEY`
 
-## ☁️ AWS Deployment
+**Deployment Time:** ~5 minutes total (Vercel: 2-3 min, EC2: 3-5 min)
 
-### EC2 Setup
+## ☁️ Production Deployment
+
+### Architecture Overview
+
+**Frontend:** Vercel (HTTPS, global CDN)  
+**Backend:** AWS EC2 t2.micro (HTTP, proxied through Vercel)  
+**Databases:** Managed services (Neon, Atlas, Redis Cloud)
+
+### EC2 Setup (Backend)
 
 1. **Launch EC2 Instance**
-   - Instance type: `t2.micro` or `t3.micro` (Free Tier eligible)
-   - OS: Ubuntu 22.04 LTS
-   - Security Group: Allow ports 22 (SSH), 80 (HTTP), 443 (HTTPS)
+   - Instance type: `t2.micro` (Free Tier, 1GB RAM)
+   - OS: Ubuntu 24.04 LTS
+   - Region: `ap-south-1` (Mumbai) or your preferred region
+   - Security Group: Allow ports 22 (SSH), 80 (HTTP)
 
-2. **Install Docker & Docker Compose**
+2. **Install Dependencies**
    ```bash
    sudo apt update
-   sudo apt install docker.io docker-compose-plugin -y
-   sudo usermod -aG docker $USER
+   sudo apt install docker.io docker-compose git -y
+   sudo usermod -aG docker ubuntu
    ```
 
-3. **Install Nginx & Certbot**
-   ```bash
-   sudo apt install nginx certbot python3-certbot-nginx -y
-   ```
-
-4. **Clone Repository**
+3. **Setup Application**
    ```bash
    git clone <your-repo-url> /opt/sentinelcloud
    cd /opt/sentinelcloud
+   nano .env  # Add production values
    ```
 
-5. **Configure Environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with production values
-   ```
-
-6. **Update docker-compose.yml**
-   - Point to ECR images instead of building locally
-   - Use Redis Cloud URL instead of local Redis (optional)
-
-7. **Start Services**
+4. **Start Services**
    ```bash
    docker-compose pull
    docker-compose up -d
    ```
 
-8. **Setup SSL with Let's Encrypt**
-   ```bash
-   sudo certbot --nginx -d yourdomain.com
-   ```
+### Vercel Setup (Frontend)
 
-### S3 Setup
+1. **Import Project**
+   - Go to https://vercel.com/new
+   - Import your GitHub repository
+   - Root Directory: `apps/web`
 
-1. Create S3 bucket: `sentinelcloud-reports`
-2. Configure IAM policy for read/write access
-3. Set `S3_BUCKET_NAME` in environment variables
+2. **Configure Environment**
+   - Add: `API_URL=http://YOUR_EC2_IP`
+   - Deploy
 
-### SES Setup
+3. **Result**
+   - Frontend: `https://your-project.vercel.app`
+   - Automatic HTTPS, global CDN, auto-deployments
 
-1. Verify sender email address in SES console
-2. Request production access (if needed, to send to any email)
-3. Set `SES_FROM_EMAIL` in environment variables
 
-### AWS Budget Alert
+**S3 (CSV Exports):**
+- Create bucket in same region as EC2
+- Configure IAM permissions
+- Set `S3_BUCKET_NAME` in `.env`
+
+**SES (Email Alerts):**
+- Verify sender email/domain
+- Request production access (optional)
+- Set `SES_FROM_EMAIL` in `.env`
+
+**Note:** SES sandbox mode works for demos (verified emails only)
+
+### Monitoring & Alerts
 
 **CRITICAL**: Set up a budget alert to avoid unexpected charges:
 
@@ -324,15 +383,16 @@ The GitHub Actions workflow (`.github/workflows/deploy.yml`) performs:
 
 | Category | Technology |
 |----------|-----------|
+| **Frontend** | Next.js 14 (App Router), React, TypeScript, Tailwind CSS, Recharts |
+| **Deployment** | Vercel (frontend), AWS EC2 (backend) |
 | **Backend** | Node.js, Express, TypeScript |
-| **Frontend** | Next.js 14, React, Tailwind CSS, Recharts |
-| **Databases** | PostgreSQL (Drizzle ORM), MongoDB |
-| **Cache/Queue** | Redis, BullMQ |
-| **Authentication** | JWT, HTTP-only cookies, bcrypt |
-| **Infrastructure** | Docker, Docker Compose, Nginx |
-| **CI/CD** | GitHub Actions |
-| **Cloud** | AWS (EC2, ECR, S3, SES) |
-| **Monitoring** | Custom ping system with alerts |
+| **Databases** | PostgreSQL (Neon + Drizzle ORM), MongoDB (Atlas) |
+| **Cache/Queue** | Redis (Redis Cloud), BullMQ |
+| **Authentication** | JWT, HTTP-only cookies, bcrypt, CSRF tokens |
+| **Infrastructure** | Docker, Nginx, GitHub Actions CI/CD |
+| **Cloud Services** | AWS (EC2, ECR, S3, SES) |
+| **Security** | Helmet, CORS, XSS sanitization, rate limiting |
+| **Monitoring** | Custom ping system with email/webhook alerts |
 
 ## 📊 API Endpoints
 
