@@ -28,6 +28,10 @@ interface User {
 export default function SettingsPage() {
   const { logout } = useAuth()
   const [user, setUser] = useState<User | null>(null)
+  // Get the actual API base URL for documentation
+  const apiBaseUrl = typeof window !== 'undefined' 
+    ? window.location.origin // In production, use current origin (Vercel will proxy)
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -592,10 +596,10 @@ export default function SettingsPage() {
                 </pre>
                 <p className="text-sm text-muted-foreground">Example (list monitors):</p>
                 <pre className="text-xs bg-muted p-3 rounded overflow-x-auto break-all">
-                  {`curl -H "Authorization: Bearer YOUR_API_KEY" ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/monitors`}
+                  {`curl -H "Authorization: Bearer YOUR_API_KEY" ${apiBaseUrl}/api/monitors`}
                 </pre>
                 <p className="text-xs text-muted-foreground">
-                  Base URL: <code className="bg-muted px-1 rounded">{process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}</code> — Full API reference: <Link href="/docs" className="text-primary underline">Docs</Link>
+                  Base URL: <code className="bg-muted px-1 rounded">{apiBaseUrl}</code> — Full API reference: <Link href="/docs" className="text-primary underline">Docs</Link>
                 </p>
               </div>
               {newKey && (

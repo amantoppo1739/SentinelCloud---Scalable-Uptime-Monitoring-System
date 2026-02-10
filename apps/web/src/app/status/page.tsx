@@ -8,7 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Shield, ArrowLeft, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+// Use relative URLs in production (proxied through Vercel)
+// Use absolute URL in development (direct to localhost API)
+const API_URL = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? '' // Empty string = relative URLs (will use Vercel proxy at /api/*)
+  : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 interface ServiceStatus {
   name: string

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+// Server-side: use API_URL env var (set in Vercel) or localhost for dev
+const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 export async function generateMetadata({ params }: { params: Promise<{ monitorId: string }> }) {
   const { monitorId } = await params
@@ -13,6 +14,7 @@ async function getMonitorStatus(monitorId: string) {
   try {
     const response = await fetch(`${API_URL}/api/public/monitors/${monitorId}/status`, {
       next: { revalidate: 60 }, // Cache for 60 seconds
+      cache: 'no-store', // Disable cache for server-side calls
     })
     
     if (!response.ok) {
