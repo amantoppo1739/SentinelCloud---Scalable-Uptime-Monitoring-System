@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 // Backend API URL (HTTP) - This proxy converts HTTPS requests to HTTP
 const API_URL = process.env.API_URL || 'http://65.2.31.27';
 
+// Increase body size limit for file uploads (Vercel default is 4.5MB)
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 60 seconds for file uploads
+
 async function proxyRequest(
   request: NextRequest,
   method: string,
@@ -39,10 +43,17 @@ async function proxyRequest(
     }
 
     // Get request body for POST/PUT/PATCH/DELETE
-    let body: string | undefined;
+    let body: string | ArrayBuffer | undefined;
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && request.body) {
       try {
-        body = await request.text();
+        // For multipart/form-data (file uploads), use arrayBuffer
+        const contentType = request.headers.get('content-type');
+        if (contentType?.includes('multipart/form-data')) {
+          body = await request.arrayBuffer();
+        } else {
+          // For JSON/text, use text
+          body = await request.text();
+        }
       } catch (e) {
         console.error('[Proxy] Failed to read request body:', e);
       }
